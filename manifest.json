@@ -1,0 +1,22 @@
+{
+  "name": "MicMute",
+  "version": "0.1.0",
+  "author": "dcqwqc",
+  "homepage": "https://github.com/dcqwqc/CaelestiaPlugin-MicMute",
+  "icon": "mic_off",
+  "description": "Global microphone mute for Caelestia: configurable hotkey, toggle or push-to-talk mode, feedback sounds, and a bar indicator.",
+  "entryPoints": [
+    {
+      "type": "custom",
+      "source": "Main.qml"
+    },
+    {
+      "type": "bar-entry",
+      "source": "bar/MicMuteIndicator.qml",
+      "properties": {
+        "name": "micMute"
+      }
+    }
+  ],
+  "settings": "Settings.qml"
+}

@@ -44,18 +44,31 @@ def run(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 def input_sources() -> list[str]:
+    """Hardware microphones plus the active virtual/monitor source.
+
+    Quest's microphone is a virtual sink monitor. Excluding all monitor nodes
+    meant the mute hotkey and the panel icon ignored the actual default input.
+    Never mute unrelated output monitors.
+    """
     result = run("pactl", "list", "short", "sources")
     if result.returncode != 0:
         return []
-    sources: list[str] = []
+    available = []
     for line in result.stdout.splitlines():
-        fields = line.split("\t")
-        if len(fields) < 2:
-            continue
-        name = fields[1].strip()
-        if not name or name.endswith(".monitor"):
-            continue
-        sources.append(name)
+        fields = line.split("	")
+        if len(fields) >= 2 and fields[1].strip():
+            available.append(fields[1].strip())
+    selected = run("pactl", "get-default-source").stdout.strip()
+    sources = [name for name in available if not name.endswith(".monitor")]
+    # Quest's virtual mic may briefly stop being the default during a VR
+    # reconnect. Keep its monitor in sync with the physical microphone mute
+    # state, without muting unrelated speaker/stream monitors.
+    for name in available:
+        if (name.startswith("qsw_") and "microphone" in name
+                and name not in sources):
+            sources.append(name)
+    if selected in available and selected not in sources:
+        sources.append(selected)
     return sources
 
 
@@ -173,13 +186,18 @@ def keyboard_device_paths() -> list[str]:
         if not handlers_match:
             continue
         handlers = handlers_match.group(1)
-        if "kbd" not in handlers or "sysrq" not in handlers:
+        if "kbd" not in handlers:
             continue
 
         name_match = re.search(r'^N:\s+Name="(.*)"$', block, re.MULTILINE)
         name = name_match.group(1) if name_match else ""
         lower = name.lower()
         if any(marker in lower for marker in VIRTUAL_MARKERS):
+            continue
+        # USB/Bluetooth keyboards may not include a sysrq handler. Exclude
+        # obvious power/sleep pseudo-keyboards while accepting real kbd nodes.
+        if "sysrq" not in handlers and any(marker in lower for marker in
+                                           ("power button", "sleep button", "video bus", "pc speaker")):
             continue
 
         event_match = re.search(r"\bevent\d+\b", handlers)

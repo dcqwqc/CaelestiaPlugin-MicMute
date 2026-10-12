@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "actions": [
+    {"id":"plugin.micmute.toggle","label":"Toggle microphone mute","category":"plugins","icon":"mic_off","argv":["wpctl","set-mute","@DEFAULT_AUDIO_SOURCE@","toggle"]}
+  ]
+}
